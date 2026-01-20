@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+
+# Conda / venv
+.env/
+.venv/
+env/
+anaconda3/
+
+# Spyder
+.spyderproject
+.spyderworkspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Torch / temp
+*.pth~
+*.npy~
+
+# Logs
+*.log
