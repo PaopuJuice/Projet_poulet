@@ -109,8 +109,8 @@ BlazeFace-PyTorch/
 │   ├── infer_chicken.py        # Inférence sur image
 │   └── webcam_chicken.py       # Inférence temps réel webcam
 ├── runs/
-|   ├── best_front.pth      # Poids fine-tuné (avec front)
-|
+|   ├── best_front.pth      # Poids fine-tuné (avec blazeface.pth)
+|   ├── best_back.pth      # Poids fine-tuné (avec blazefaceback.pth)
 └── README.md
 ```
 
