@@ -108,7 +108,9 @@ BlazeFace-PyTorch/
 │   ├── train_blazeface_chicken.py  # Entraînement / fine-tuning
 │   ├── infer_chicken.py        # Inférence sur image
 │   └── webcam_chicken.py       # Inférence temps réel webcam
-│
+│__runs/
+|  ├── best_front.pth      # Poids fine-tuné (avec front)
+|
 └── README.md
 ```
 
@@ -136,6 +138,76 @@ L’objectif n’est pas de réentraîner un détecteur from scratch, mais de **
 - `train_blazeface_chicken.py`
 
 L’entraînement est réalisé sur PC (CPU), avec pour objectif principal la **validation fonctionnelle** du pipeline avant optimisation et portage embarqué.
+
+### 7.1 Modèle BlazeFace utilisé
+
+L’entraînement repose sur la variante **BlazeFace Front**, sélectionnée explicitement lors de l’initialisation du modèle :
+
+- Paramètre : `back_model = False`
+- Architecture : BlazeFace Front
+- Résolution d’entrée : `128 × 128`
+
+Ce choix est cohérent avec le contexte du projet :
+- caméra fixe,
+- champ de vision limité,
+- poules occupant une portion significative de l’image.
+
+La variante *Back* de BlazeFace (prévue pour des visages éloignés et des résolutions élevées) n’a pas été utilisée.
+
+---
+
+### 7.2 Poids pré-entraînés
+
+Le fine-tuning est effectué à partir des **poids pré-entraînés du modèle BlazeFace Front** :
+
+- Fichier : `blazeface.pth`
+- Entraînement initial : détection de visages humains
+
+Ces poids permettent d’initialiser :
+- le backbone convolutionnel,
+- la tête de détection SSD-like,
+- avec des représentations visuelles génériques (bords, textures, formes).
+
+Le modèle n’est donc **pas entraîné from scratch**, mais adapté par transfert de connaissances au domaine des poules.
+
+---
+
+### 7.3 Anchors utilisées
+
+BlazeFace repose sur un mécanisme d’**anchors fixes**, prédéfinies pour différentes tailles et positions d’objets.
+
+Dans ce projet :
+- seules les **anchors du modèle Front** sont utilisées,
+- fichier : `anchors.npy`,
+- les anchors sont **figées** pendant l’entraînement (non ré-apprises).
+
+Ces anchors sont adaptées à la détection d’objets compacts en temps réel.
+
+Les anchors associées au modèle Back (`anchorsback.npy`) ne sont pas utilisées.
+
+---
+
+### 7.4 Modèle final entraîné
+
+Le modèle final issu de l’entraînement est sauvegardé sous la forme :
+
+- `best_front.pth`
+
+Ce fichier correspond à :
+- un modèle **BlazeFace Front**,
+- initialisé à partir des poids pré-entraînés `blazeface.pth`,
+- utilisant les **anchors Front (`anchors.npy`)**,
+- fine-tuné sur le dataset annoté de poules.
+
+Schéma récapitulatif :
+
+```text
+blazeface.pth
+   ↓  (initialisation)
+BlazeFace FRONT + anchors.npy
+   ↓  (fine-tuning sur poules)
+best_front.pth
+```
 
 ---
 
