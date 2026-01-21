@@ -1,68 +1,112 @@
-# BlazeFace in Python
+# 🐔 Chicken Detection with BlazeFace (Projet IESE5)
 
-BlazeFace is a fast, light-weight face detector from Google Research. [Read more](https://sites.google.com/view/perception-cv4arvr/blazeface), [Paper on arXiv](https://arxiv.org/abs/1907.05047)
+## 1. Présentation du projet
 
-A pretrained model is available as part of Google's [MediaPipe](https://github.com/google/mediapipe/blob/master/mediapipe/docs/face_detection_mobile_gpu.md) framework.
+Ce projet vise à développer un **système de détection automatique de poules** destiné à piloter l’ouverture d’un poulailler intelligent.
 
-![](https://raw.githubusercontent.com/google/mediapipe/master/mediapipe/docs/images/realtime_face_detection.gif)
+Le système repose sur un **réseau de neurones convolutifs léger**, capable de fonctionner en **temps réel**, avec pour objectif final un **déploiement embarqué sur une puce NPU (Colibri – ASYGN)**.
 
-Besides a bounding box, BlazeFace also predicts 6 keypoints for face landmarks (2x eyes, 2x ears, nose, mouth).
+Le développement est réalisé en priorité sur PC afin de valider :
+- la faisabilité algorithmique,
+- la robustesse du pipeline,
+- et la logique système avant portage embarqué.
 
-Because BlazeFace is designed for use on mobile devices, the pretrained model is in TFLite format. However, I wanted to use it from PyTorch and so I converted it.
+---
 
-> **NOTE:** The MediaPipe model is slightly different from the model described in the BlazeFace paper. It uses depthwise convolutions with a 3x3 kernel, not 5x5. And it only uses "single" BlazeBlocks, not "double" ones.
+## 2. Choix du modèle : BlazeFace
 
-The BlazePaper paper mentions that there are two versions of the model, one for the front-facing camera and one for the back-facing camera. This repo includes only the frontal camera model, as that is the only one I was able to find an official trained version for. The difference between the two models is the dataset they were trained on. As the paper says,
+Nous utilisons **BlazeFace**, un modèle initialement conçu pour la détection de visages sur mobile.
 
-> For the frontal camera model, only faces that occupy more than 20% of the image area were considered due to the intended use case (the threshold for the rear-facing camera model was 5%).
+**Référence scientifique :**  
+> *BlazeFace: Sub-millisecond Neural Face Detection on Mobile GPUs*  
+> https://arxiv.org/abs/1907.05047
 
-This means the included model will not be able to detect faces that are relatively small. It's really intended for selfies, not for general-purpose face detection.
+### Pourquoi BlazeFace ?
+- Architecture **SSD-like** (Single Shot Detector)
+- Réseau **très léger** (depthwise convolutions)
+- Faible latence
+- Compatible avec les opérateurs supportés par la puce Colibri :
+  - Convolution
+  - Depthwise Convolution
+  - MaxPooling
+  - Global Average Pooling
+  - Dense
 
-## Inside this repo
+Nous utilisons l’implémentation PyTorch open-source :
+- **BlazeFace-PyTorch** (repo original : hollance)
 
-Essential files:
+---
 
-- **blazeface.py**: defines the `BlazeFace` class that does all the work
+## 3. Environnement de développement
 
-- **blazeface.pth**: the weights for the trained model
+- **OS** : Windows
+- **Python** : 3.10
+- **Gestion d’environnement** : Anaconda
+- **IDE** : Spyder
+- **Framework DL** : PyTorch (CPU)
+- **Vision** : OpenCV
 
-- **anchors.npy**: lookup table with anchor boxes
+> Le développement est volontairement effectué sur PC avant portage sur Raspberry Pi puis NPU.
 
-Notebooks:
+---
 
-- **Anchors.ipynb**: creates anchor boxes and saves them as a binary file (anchors.npy)
+## 4. Dataset
 
-- **Convert.ipynb**: loads the weights from the TFLite model and converts them to PyTorch format (blazeface.pth)
+### 4.1 Données
+- Images de **poules seules**
+- Variabilité :
+  - points de vue (profil, face, plongée),
+  - tailles,
+  - arrière-plans,
+  - conditions lumineuses.
 
-- **Inference.ipynb**: shows how to use the `BlazeFace` class to make face detections
+### 4.2 Répartition
+| Split | Nombre d’images |
+|-----|-----------------|
+| Train | 507 |
+| Validation | 148 |
+| Test | 59 |
 
-## Detections
+---
 
-Each face detection is a PyTorch `Tensor` consisting of 17 numbers:
+## 5. Annotation
 
-- The first 4 numbers describe the bounding box corners: 
-    - `ymin, xmin, ymax, xmax`
-    - These are normalized coordinates (between 0 and 1).
+BlazeFace étant un **modèle de détection**, les images ont été **annotées manuellement** avec des **bounding boxes**.
 
-- The next 12 numbers are the x,y-coordinates of the 6 facial landmark keypoints:
-    - `right_eye_x, right_eye_y`
-    - `left_eye_x, left_eye_y`
-    - `nose_x, nose_y`
-    - `mouth_x, mouth_y`
-    - `right_ear_x, right_ear_y`
-    - `left_ear_x, left_ear_y`
-    - Tip: these labeled as seen from the perspective of the person, so their right is your left.
+- Outil : `labelImg`
+- Format : YOLO (`.txt`)
+- Classe unique : `poule`
 
-- The final number is the confidence score that this detection really is a face.
+Chaque image possède un fichier d’annotation décrivant la position de la poule dans l’image.
 
-## Image credits
+---
 
-Included for testing are the following images:
+## 6. Structure du projet
 
-- **1face.png**. Fei Fei Li by [ITU Pictures](https://www.flickr.com/photos/itupictures/35011409612/), CC BY 2.0
-
-- **3faces.png**. Geoffrey Hinton, Yoshua Bengio, Yann Lecun. Found at [AIBuilders](https://aibuilders.ai/le-prix-turing-recompense-trois-pionniers-de-lintelligence-artificielle-yann-lecun-yoshua-bengio-et-geoffrey-hinton/)
-
-- **4faces.png** from Andrew Ng’s Facebook page / [KDnuggets](https://www.kdnuggets.com/2015/03/talking-machine-deep-learning-gurus-p1.html)
-
-These images were scaled down to 128x128 pixels as that is the expected input size of the model.
+```text
+BlazeFace-PyTorch/
+│
+├── blazeface.py                # Modèle BlazeFace
+├── blazeface.pth               # Poids pré-entraînés (front)
+├── blazefaceback.pth           # Poids pré-entraînés (back)
+├── anchors.npy                 # Anchors front
+├── anchorsback.npy             # Anchors back
+│
+├── dataset/
+│   ├── images/
+│   │   ├── train/
+│   │   ├── val/
+│   │   └── test/
+│   └── labels/
+│       ├── train/
+│       ├── val/
+│       └── test/
+│
+├── src/
+│   ├── chicken_dataset.py      # Dataset PyTorch personnalisé
+│   ├── test_dataset.py         # Vérification dataset
+│   ├── train_blazeface_chicken.py  # Entraînement / fine-tuning
+│   ├── infer_chicken.py        # Inférence sur image
+│   └── webcam_chicken.py       # Inférence temps réel webcam
+│
+└── README.md
