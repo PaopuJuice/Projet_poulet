@@ -298,7 +298,14 @@ class BlazeFace(nn.Module):
         # 4. Non-maximum suppression to remove overlapping detections:
         filtered_detections = []
         for i in range(len(detections)):
-            faces = self._weighted_non_max_suppression(detections[i])
+
+            # Limitation : ne garder que les 20 premières detections
+            # (évite le blocage CPU avec des scores non-discriminants)
+            dets = detections[i]
+
+            print("anchors kept:", dets.shape[0])
+    
+            faces = self._weighted_non_max_suppression(dets)
             faces = torch.stack(faces) if len(faces) > 0 else torch.zeros((0, 17))
             filtered_detections.append(faces)
 
@@ -394,25 +401,27 @@ class BlazeFace(nn.Module):
         mediapipe/calculators/util/non_max_suppression_calculator.proto
         """
         if len(detections) == 0: return []
-
         output_detections = []
 
-        # Sort the detections from highest to lowest score.
         remaining = torch.argsort(detections[:, 16], descending=True)
+        
+        # Sécurité : on limite le nombre d'itérations max
+        max_iterations = len(remaining) 
+        iteration = 0
 
-        while len(remaining) > 0:
+        while len(remaining) > 0 and iteration < max_iterations:
+            iteration += 1
             detection = detections[remaining[0]]
-
-            # Compute the overlap between the first box and the other 
-            # remaining boxes. (Note that the other_boxes also include
-            # the first_box.)
             first_box = detection[:4]
             other_boxes = detections[remaining, :4]
             ious = overlap_similarity(first_box, other_boxes)
 
-            # If two detections don't overlap enough, they are considered
-            # to be from different faces.
+            # Si ious contient des NaNs, on force la suppression de la box actuelle
             mask = ious > self.min_suppression_threshold
+            
+            # On s'assure que l'élément actuel est TOUJOURS supprimé (mask[0] = True)
+            mask[0] = True 
+
             overlapping = remaining[mask]
             remaining = remaining[~mask]
 
