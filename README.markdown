@@ -108,8 +108,8 @@ BlazeFace-PyTorch/
 │   ├── train_blazeface_chicken.py  # Entraînement / fine-tuning
 │   ├── infer_chicken.py        # Inférence sur image
 │   └── webcam_chicken.py       # Inférence temps réel webcam
-│__runs/
-|  ├── best_front.pth      # Poids fine-tuné (avec front)
+├── runs/
+|   ├── best_front.pth      # Poids fine-tuné (avec front)
 |
 └── README.md
 ```
