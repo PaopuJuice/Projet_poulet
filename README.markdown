@@ -63,8 +63,8 @@ Nous utilisons l’implémentation PyTorch open-source :
 ### 4.2 Répartition
 | Split | Nombre d’images |
 |-----|-----------------|
-| Train | 507 |
-| Validation | 148 |
+| Train | 509 |
+| Validation | 142 |
 | Test | 59 |
 
 ---
