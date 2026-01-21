@@ -8,6 +8,9 @@ Created on Tue Jan 20 09:16:19 2026
 import sys
 from pathlib import Path
 
+from box_fusion import weighted_box_fusion
+
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -106,11 +109,15 @@ def main():
         if scores.numel() > TOP_K:
             scores, idx = torch.topk(scores, k=TOP_K)
             boxes = boxes[idx]
+        
+        # Fusion des boxes (remplace NMS)
+        boxes_np, scores_np = weighted_box_fusion(boxes.cpu().numpy(),scores.cpu().numpy(),iou_thr=0.35)
 
-        # 3) NMS
-        keep_idx = nms_yxyx(boxes, scores, iou_threshold=0.3)
-        boxes = boxes[keep_idx]
-        scores = scores[keep_idx]
+        boxes = torch.from_numpy(boxes_np).to(DEVICE)
+        scores = torch.from_numpy(scores_np).to(DEVICE)
+
+
+        
 
         # 4) keep only best N
         MAX_DET = 5

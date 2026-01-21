@@ -9,6 +9,9 @@ import sys
 import time
 from pathlib import Path
 
+from box_fusion import weighted_box_fusion
+
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -85,10 +88,13 @@ def postprocess(model, raw_boxes, raw_scores):
     if scores.numel() > TOP_K:
         scores, idx = torch.topk(scores, k=TOP_K)
         boxes = boxes[idx]
+    boxes_np, scores_np = weighted_box_fusion(boxes.cpu().numpy(),scores.cpu().numpy(),iou_thr=0.35)
 
-    keep_idx = nms_yxyx(boxes, scores, iou_threshold=NMS_IOU)
-    boxes = boxes[keep_idx]
-    scores = scores[keep_idx]
+    boxes = torch.from_numpy(boxes_np).to(boxes.device)
+    scores = torch.from_numpy(scores_np).to(scores.device)
+    
+    MAX_DET=1
+
 
     if scores.numel() > MAX_DET:
         scores, idx = torch.topk(scores, k=MAX_DET)
