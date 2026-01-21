@@ -110,3 +110,79 @@ BlazeFace-PyTorch/
 │   └── webcam_chicken.py       # Inférence temps réel webcam
 │
 └── README.md
+```
+
+## 7. Entraînement (fine-tuning)
+
+Le modèle BlazeFace est **ré-entraîné (fine-tuning)** sur une seule classe : `poule`, à partir des poids pré-entraînés fournis avec le modèle original.
+
+L’objectif n’est pas de réentraîner un détecteur from scratch, mais de **réutiliser les capacités de localisation déjà apprises** par BlazeFace et de les adapter au nouveau domaine visuel.
+
+### Principe
+- Chargement des poids pré-entraînés BlazeFace
+- Conservation de l’architecture (anchors, backbone, tête SSD)
+- Apprentissage sur le dataset annoté de poules
+
+### Paramètres principaux
+- **Entrée réseau** : images redimensionnées en `128 × 128`
+- **Sorties** :
+  - score de présence de l’objet
+  - coordonnées de la bounding box
+- **Fonction de perte** :
+  - perte de localisation (régression des bounding boxes)
+  - perte de classification (présence / absence)
+
+### Script utilisé
+- `train_blazeface_chicken.py`
+
+L’entraînement est réalisé sur PC (CPU), avec pour objectif principal la **validation fonctionnelle** du pipeline avant optimisation et portage embarqué.
+
+---
+
+## 8. Inférence
+
+### 8.1 Inférence sur image
+
+Le script `infer_chicken.py` permet de tester le modèle entraîné sur des images statiques.
+
+Pipeline d’inférence :
+1. chargement du modèle et des poids entraînés,
+2. pré-traitement de l’image (resize, normalisation),
+3. passage dans le réseau (forward pass),
+4. décodage des bounding boxes à partir des anchors,
+5. filtrage par seuil de confiance,
+6. suppression des doublons via **Non-Maximum Suppression (NMS)**,
+7. affichage des résultats (bounding box + score).
+
+Ce script permet de vérifier visuellement la qualité de la détection.
+
+---
+
+### 8.2 Inférence temps réel (webcam)
+
+Le script `webcam_chicken.py` implémente une détection **temps réel** à partir d’une webcam via OpenCV.
+
+Pour chaque frame :
+- capture de l’image,
+- inférence BlazeFace,
+- décodage et filtrage des détections,
+- affichage des bounding boxes et scores.
+
+---
+
+### 8.3 Logique temporelle (robustesse système)
+
+#### Problème observé
+Le modèle peut produire des **faux positifs** (ex. visages), phénomène courant lors de l’adaptation d’un détecteur CNN à un nouveau domaine visuel.
+
+#### Solution mise en place
+Plutôt que de prendre une décision sur une seule frame, une **logique temporelle** est appliquée :
+
+- une poule doit être détectée **pendant un temps minimal continu**,
+- de courtes pertes de détection sont tolérées.
+
+Règle de décision :
+```text
+Si poule détectée ≥ 2 secondes → OUVERTURE
+Sinon → FERMÉ
+
