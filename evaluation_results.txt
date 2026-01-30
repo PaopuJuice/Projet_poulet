@@ -1,0 +1,6 @@
+Précision: 0.9435
+Rappel: 0.9697
+F1 Score: 0.9564
+Matrice de confusion:
+[[222  23]
+ [ 12 384]]

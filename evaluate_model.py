@@ -6,6 +6,7 @@ from sklearn.metrics import precision_score, recall_score, f1_score, confusion_m
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import os
 
 # 1. Définir l'architecture du modèle
 class BlazeBlock(torch.nn.Module):
@@ -47,7 +48,55 @@ class PouleDetector(torch.nn.Module):
         x = self.fc(x)
         return self.sigmoid(x)
 
+def print_dataset_statistics(root="data"):
+    splits = ["train", "val", "test"]
+
+    # ---- comptage global
+    split_counts = {}
+    class_counts = {}
+    total_images = 0
+
+    for split in splits:
+        split_path = os.path.join(root, split)
+        split_total = 0
+        class_counts[split] = {}
+
+        for cls in os.listdir(split_path):
+            cls_path = os.path.join(split_path, cls)
+            if not os.path.isdir(cls_path):
+                continue
+
+            n = len([
+                f for f in os.listdir(cls_path)
+                if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp"))
+            ])
+            class_counts[split][cls] = n
+            split_total += n
+
+        split_counts[split] = split_total
+        total_images += split_total
+
+    # ---- affichage global
+    print("\n📊 DATASET SPLIT DISTRIBUTION\n")
+    print("GLOBAL:")
+    for split in splits:
+        pct = 100 * split_counts[split] / total_images
+        print(f"  {split:<5}: {split_counts[split]:4d} images ({pct:5.1f} %)")
+    print(f"  TOTAL : {total_images:4d} images\n")
+
+    # ---- détail par split
+    print("DETAIL PAR SPLIT:\n")
+    for split in splits:
+        print(f"{split.upper()}:")
+        split_total = split_counts[split]
+        for cls, n in class_counts[split].items():
+            pct = 100 * n / split_total if split_total > 0 else 0
+            print(f"  {cls:<12}: {n:4d} ({pct:5.1f} %)")
+        print()
+        
+        
 def evaluate_model():
+    print_dataset_statistics("data")
     # 2. Charger le modèle entraîné
     device = torch.device("cpu")
     model = PouleDetector().to(device)
@@ -76,7 +125,7 @@ def evaluate_model():
             preds = (outputs > 0.5).float()
             all_labels.extend(labels.cpu().numpy())
             all_preds.extend(preds.cpu().numpy())
-            all_probs.extend(outputs.squeeze().cpu().numpy())  # Modification ici
+            all_probs.extend(outputs.view(-1).cpu().numpy())
 
     # 5. Calculer les métriques
     precision = precision_score(all_labels, all_preds)

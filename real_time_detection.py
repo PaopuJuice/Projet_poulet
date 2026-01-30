@@ -4,6 +4,7 @@ import torch
 from torchvision import transforms
 from PIL import Image
 import numpy as np
+import time
 
 # 1. Définir l'architecture du modèle
 class BlazeBlock(torch.nn.Module):
@@ -49,7 +50,7 @@ def main():
     # 2. Charger le modèle entraîné
     device = torch.device("cpu")
     model = PouleDetector().to(device)
-    model.load_state_dict(torch.load('poule_detector_best.pth'))
+    model.load_state_dict(torch.load('poule_detector.pth'))
     model.eval()
 
     # 3. Définir les transformations
@@ -69,9 +70,18 @@ def main():
 
     # Créer une seule fenêtre
     cv2.namedWindow('Détection de poules', cv2.WINDOW_NORMAL)
+    prev_time = time.time()
+    fps = 0.0
 
     while True:
         ret, frame = cap.read()
+        current_time = time.time()
+        dt = current_time - prev_time
+        prev_time = current_time
+
+        current_fps = 1.0 / dt if dt > 0 else 0.0
+        fps = 0.9 * fps + 0.1 * current_fps  # lissage
+
         if not ret:
             print("Erreur: Impossible de lire le flux vidéo")
             break
@@ -93,8 +103,8 @@ def main():
             # Afficher le résultat
             h, w, _ = frame.shape
 
-            status = "POULE DETECTEE" if pred > 0.4 else "AUCUNE POULE"
-            color = (0, 200, 0) if pred > 0.4 else (0, 0, 200)
+            status = "POULE DETECTEE" if pred > 0.3 else "AUCUNE POULE"
+            color = (0, 200, 0) if pred > 0.3 else (0, 0, 200)
 
             # Overlay translucide
             overlay = frame.copy()
@@ -115,13 +125,23 @@ def main():
 
             cv2.putText(
                 frame,
-                f"Confidence: {pred*100:.1f} %",
+                f"Confidence: {confidence*100:.1f} %",
                 (20, 100),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1.0,
                 (255, 255, 255),
                 2,
             )
+            cv2.putText(
+                frame,
+                f"FPS: {fps:.1f}",
+               (20, h - 20),
+               cv2.FONT_HERSHEY_SIMPLEX,
+               0.8,
+               (255, 255, 255),
+               2,
+            )
+
 
 
             # Afficher dans la même fenêtre
